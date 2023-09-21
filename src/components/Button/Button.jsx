@@ -12,4 +12,5 @@ export const Button = ({ onClick, isVisible }) => {
 
 Button.propTypes = {
   onClick: PropTypes.func,
+  isVisible: PropTypes.bool.isRequired,
 };

@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Searchbar } from 'components/Searchbar';
 import { ImageGallery } from 'components/ImageGallery';
 import { Button } from 'components/Button';
@@ -9,99 +9,78 @@ import { fetchImages } from 'services';
 import { ToastContainer } from 'react-toastify';
 import { toast } from 'react-toastify';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    showModal: false,
-    isLoading: false,
-    noMoreImages: false,
-    largeImageURL: '',
-  };
+export function App() {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [noMoreImages, setNoMoreImages] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      this.state.page !== prevState.page ||
-      this.state.query !== prevState.query
-    ) {
-      this.fetchImages();
+  useEffect(() => {
+    if (page !== 1 || query !== '') {
+      setIsLoading(true);
+
+      fetchImages(query, page)
+        .then(data => {
+          const lastPage = Math.ceil(data.totalHits / 12);
+
+          if (data.totalHits === 0) {
+            setNoMoreImages(true);
+            return toast.info(`No results found for ${query}`);
+          } else {
+            setImages(prevImages => [...prevImages, ...data.hits]);
+            setNoMoreImages(false);
+          }
+          if (page === lastPage) {
+            setNoMoreImages(true);
+            return toast.success(
+              `You have uploaded all images for request ${query}`
+            );
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching images:', error);
+          toast.error(`No results found for ${query}`);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  }
+  }, [query, page]);
 
-  fetchImages = () => {
-    const { query, page } = this.state;
-
-    this.setState({ isLoading: true });
-
-    fetchImages(query, page)
-      .then(data => {
-        const lastPage = Math.ceil(data.totalHits / 12);
-
-        if (data.totalHits === 0) {
-          this.setState({ noMoreImages: true });
-          return toast.info(`No results found for ${query}`);
-        } else {
-          this.setState(prevState => ({
-            images: [...prevState.images, ...data.hits],
-            noMoreImages: false,
-          }));
-        }
-        if (page === lastPage) {
-          this.setState({ noMoreImages: true });
-          return toast.success(
-            `You have uploaded all images for request ${query}`
-          );
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching images:', error);
-        toast.error(`No results found for ${query}`);
-      })
-      .finally(() => {
-        this.setState({ isLoading: false });
-      });
+  const handleSearchSubmit = newQuery => {
+    setQuery(newQuery);
+    setPage(1);
+    setImages([]);
   };
 
-  handleSearchSubmit = query => {
-    this.setState({ query, page: 1, images: [] });
+  const handleImageClick = clickedImageURL => {
+    setLargeImageURL(clickedImageURL);
+    setShowModal(true);
   };
 
-  handleImageClick = largeImageURL => {
-    this.setState({ largeImageURL: largeImageURL, showModal: true });
+  const handleCloseModal = () => {
+    setShowModal(false);
   };
 
-  handleCloseModal = () => {
-    this.setState({ showModal: false });
+  const onLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
-
-  render() {
-    const { images, isLoading, showModal, noMoreImages, largeImageURL } =
-      this.state;
-
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.handleSearchSubmit} />
-        <ImageGallery
-          images={images}
-          handleImageClick={this.handleImageClick}
-        />
-        {isLoading && <Loader />}
-        {images.length > 0 && !isLoading && !noMoreImages && (
-          <Button onClick={this.onLoadMore} isVisible={true} />
-        )}
-        {showModal && (
-          <Modal
-            largeImageURL={largeImageURL}
-            onClose={this.handleCloseModal}
-          />
-        )}
-        <ToastContainer autoClose={2000} />
-      </div>
-    );
-  }
+  return (
+    <div className="App">
+      <Searchbar onSubmit={handleSearchSubmit} />
+      <ImageGallery images={images} handleImageClick={handleImageClick} />
+      {isLoading && <Loader />}
+      {images.length > 0 && !isLoading && !noMoreImages && (
+        <Button onClick={onLoadMore} isVisible={true} />
+      )}
+      {showModal && (
+        <Modal largeImageURL={largeImageURL} onClose={handleCloseModal} />
+      )}
+      <ToastContainer autoClose={2000} />
+    </div>
+  );
 }

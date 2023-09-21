@@ -9,8 +9,8 @@ export const ImageGalleryItem = ({ src, alt, onClick }) => {
   );
 };
 
-ImageGalleryItem.propType = {
-  src: PropTypes.string,
-  alt: PropTypes.string,
-  onClick: PropTypes.func,
+ImageGalleryItem.propTypes = {
+  src: PropTypes.string.isRequired,
+  alt: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
 };
